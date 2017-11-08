@@ -10,8 +10,9 @@ script:
   - docker build -t ezgliding/crawler:$TRAVIS_COMMIT .
 
 after_success:
-  if [ ! -z "$TRAVIS_TAG" ]; then
+  - |
+    if [ ! -z "$TRAVIS_TAG" ]; then
     docker tag ezgliding/crawler:$TRAVIS_COMMIT ezgliding/crawler:$TRAVIS_TAG
-    docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
-    docker push ezgliding/crawler:$TRAVIS_TAG
-  fi
+      docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+      docker push ezgliding/crawler:$TRAVIS_TAG
+    fi
