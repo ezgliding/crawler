@@ -4,32 +4,29 @@ package crawler
 
 import (
 	"time"
-
-	igc "github.com/ezgliding/goigc"
 )
 
-//FlightURL ...
-type FlightURL string
-
-// FlightGetter ...
-type FlightGetter interface {
-	FlightFetch() ([]Flight, error)
-	FlightGet(url FlightURL) (Flight, error)
-}
-
-// Flight ...
+// Flight represents a flight submission in an online competition.
+//
+// It includes all the flight metadata available in the online competition,
+// including computed data like speed or distance. It also includes a url to
+// the flight track file (usually in IGC format).
 type Flight struct {
-	Pilot    string
-	Club     string
-	Date     time.Time
-	Takeoff  string
-	Region   string
-	Country  string
-	Distance float64
-	Points   float64
-	Glider   string
-	Type     string
-	Speed    float64
-	Task     []igc.Point
-	Comments string
+	URL            string
+	ID             string
+	Pilot          string
+	Club           string
+	Date           time.Time
+	Takeoff        string
+	Region         string
+	Country        string
+	Distance       float64
+	Points         float64
+	Glider         string
+	Type           string
+	TrackURL       string
+	TrackID        string
+	CompetitionURL string
+	Speed          float64
+	Comments       string
 }
