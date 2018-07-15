@@ -1,13 +1,2 @@
-# ezgliding crawler
+# ezgliding crawler [![Build Status](https://travis-ci.org/ezgliding/crawler.svg?branch=master)](http://travis-ci.org/ezgliding/crawler) [![Coverage Status](https://coveralls.io/repos/github/ezgliding/crawler/badge.svg?branch=master)](https://coveralls.io/github/ezgliding/crawler?branch=vendor) [![GoDoc](https://godoc.org/github.com/ezgliding/crawler?status.png)](https://godoc.org/github.com/ezgliding/crawler) [![Go Report Card](https://goreportcard.com/badge/github.com/ezgliding/crawler)](https://goreportcard.com/report/github.com/ezgliding/crawler)
 
-### Release
-
-Releases are managed by tags and the travis-ci (check after_success job).
-
-To release a new version, do (example for v0.1.0):
-```
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The resulting image will appear under docker.io/ezgliding/crawler:v0.1.0
