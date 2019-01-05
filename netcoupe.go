@@ -114,13 +114,19 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 		f.Distance = parseFloat(e.ChildText("tbody tr:nth-child(12) td:nth-child(2) div"))
 		f.Points = parseFloat(e.ChildText("tbody tr:nth-child(13) td:nth-child(2) div"))
 		f.Glider = e.ChildText("tbody tr:nth-child(14) td:nth-child(2) div table tbody tr td")
-		f.Type = e.ChildText("tbody tr:nth-child(15) td:nth-child(2) div")
-		// FIXME(rochaporto): handle competition field
-		trackUrl, _ := url.Parse(e.ChildAttr("tbody tr:nth-child(16) td:nth-child(2) div a", "href"))
+
+		i := 0
+		if strings.Contains(e.ChildText("tbody tr:nth-child(15) td:nth-child(1) div"), "Comp") {
+			f.CompetitionURL = e.ChildText("tbody tr:nth-child(15) td:nth-child(2) div")
+			i = 1
+		}
+		f.Type = e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 15+i))
+		trackUrl, _ := url.Parse(
+			e.ChildAttr(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div a", 16+i), "href"))
 		f.TrackID = trackUrl.Query()["FileID"][0]
 		f.TrackURL = fmt.Sprintf("%v%v", TrackBaseUrl, f.TrackID)
-		f.Speed = parseFloat(e.ChildText("tbody tr:nth-child(17) td:nth-child(2) div"))
-		f.Comments = e.ChildText("tbody tr:nth-child(23) td:nth-child(2) div")
+		f.Speed = parseFloat(e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 17+i)))
+		f.Comments = e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 23+i))
 
 		flights = append(flights, f)
 	})

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -36,8 +37,8 @@ func TestNetcoupeCrawler(t *testing.T) {
 
 func TestNetcoupeCrawlerDownload(t *testing.T) {
 
-	start := time.Date(2018, 06, 21, 12, 0, 0, 0, time.UTC)
-	end := time.Date(2018, 06, 21, 12, 0, 0, 0, time.UTC)
+	start := time.Date(2018, 07, 31, 12, 0, 0, 0, time.UTC)
+	end := time.Date(2018, 07, 31, 12, 0, 0, 0, time.UTC)
 
 	var n Netcoupe = NewNetcoupe()
 	current := start
@@ -50,9 +51,11 @@ func TestNetcoupeCrawlerDownload(t *testing.T) {
 		ioutil.WriteFile(fmt.Sprintf("db/%v.json", current.Format("02-01-2006")), jsonFlights, 0644)
 
 		for _, f := range flights {
-			url := fmt.Sprintf("%v%v", TrackBaseUrl, f.TrackID)
-			data, _ := n.Get(url)
-			ioutil.WriteFile(fmt.Sprintf("db/flights/%v", f.TrackID), data, 0644)
+			if _, err := os.Stat(fmt.Sprintf("db/flights/%v", f.TrackID)); os.IsNotExist(err) {
+				url := fmt.Sprintf("%v%v", TrackBaseUrl, f.TrackID)
+				data, _ := n.Get(url)
+				ioutil.WriteFile(fmt.Sprintf("db/flights/%v", f.TrackID), data, 0644)
+			}
 		}
 	}
 

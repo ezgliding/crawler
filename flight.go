@@ -26,6 +26,7 @@ type Flight struct {
 	Type           string
 	TrackURL       string
 	TrackID        string
+	CompetitionID  string
 	CompetitionURL string
 	Speed          float64
 	Comments       string
