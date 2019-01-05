@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -42,8 +40,15 @@ var httpHeaders = map[string][]string{
 
 // Netcoupe implements a crawler for http://netcoupe.net.
 type Netcoupe struct {
-	DownloadTrack bool
-	BasePath      string
+	collector *colly.Collector
+}
+
+func NewNetcoupe() Netcoupe {
+	n := Netcoupe{}
+	n.collector = colly.NewCollector()
+	n.collector.AllowURLRevisit = true
+	n.collector.UserAgent = httpHeaders["User-Agent"][0]
+	return n
 }
 
 // Crawl checks for flights on netcoupe.net.
@@ -67,9 +72,7 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 
 	r, _ := regexp.Compile(`.*DisplayFlightDetail\('(?P<ID>[0-9]+)'\).*`)
 
-	c := colly.NewCollector()
-	c.AllowURLRevisit = true
-	c.UserAgent = httpHeaders["User-Agent"][0]
+	c := n.newCollector()
 	c.OnRequest(func(r *colly.Request) {
 		log.WithFields(log.Fields{
 			"url":     r.URL.String(),
@@ -80,17 +83,12 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 			"response": r,
 			"error":    err}).Error("Failed to visit url")
 	})
-	d := c.Clone()
+
+	d := n.newCollector()
 	d.OnRequest(func(r *colly.Request) {
 		log.WithFields(log.Fields{
 			"url":     r.URL.String(),
 			"headers": r.Headers}).Trace("Visiting flight details")
-	})
-	t := c.Clone()
-	t.OnRequest(func(r *colly.Request) {
-		log.WithFields(log.Fields{
-			"url":     r.URL.String(),
-			"headers": r.Headers}).Trace("Visiting flight track")
 	})
 
 	c.OnHTML("table tr td:nth-child(4) a[href]", func(e *colly.HTMLElement) {
@@ -125,16 +123,6 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 		f.Comments = e.ChildText("tbody tr:nth-child(23) td:nth-child(2) div")
 
 		flights = append(flights, f)
-		if n.DownloadTrack {
-			if _, err := os.Stat(fmt.Sprintf("%v/%v", n.BasePath, f.TrackID)); os.IsNotExist(err) {
-				t.Visit(fmt.Sprintf("%v%v", TrackBaseUrl, f.TrackID))
-			}
-		}
-	})
-
-	t.OnResponse(func(r *colly.Response) {
-		trackID := r.Request.URL.Query()["FileID"][0]
-		ioutil.WriteFile(fmt.Sprintf("%v/%v", n.BasePath, trackID), r.Body, 0644)
 	})
 
 	current := time.Date(start.Year(), start.Month(), start.Day(), 12, 0, 0, 0, time.UTC)
@@ -154,6 +142,27 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 		"num_flights": len(flights),
 	}).Trace("Finishing crawling flights")
 	return flights, nil
+}
+
+func (n Netcoupe) Get(url string) ([]byte, error) {
+	var result []byte
+
+	t := n.newCollector()
+	t.OnRequest(func(r *colly.Request) {
+		log.WithFields(log.Fields{
+			"url":     r.URL.String(),
+			"headers": r.Headers}).Trace("Visiting flight track")
+	})
+	t.OnResponse(func(r *colly.Response) {
+		result = r.Body
+	})
+	t.Visit(url)
+
+	return result, nil
+}
+
+func (n Netcoupe) newCollector() *colly.Collector {
+	return n.collector.Clone()
 }
 
 func (n Netcoupe) sessionHeaders(c *colly.Collector) map[string]string {
