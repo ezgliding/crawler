@@ -138,6 +138,19 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 		data["ddlDisplayRange"] = "0"
 		data["ddlDisplayDate"] = current.Format("02/01/2006")
 		data["rbgDisplayMode"] = "rbDisplayByDate"
+		tmp := n.newCollector()
+		tmp.OnHTML("input", func(e *colly.HTMLElement) {
+			switch e.Attr("name") {
+			case "__EVENTVALIDATION":
+				data["__EVENTVALIDATION"] = e.Attr("value")
+			case "__VIEWSTATE":
+				data["__VIEWSTATE"] = e.Attr("value")
+			case "__VIEWSTATEGENERATOR":
+				data["__VIEWSTATEGENERATOR"] = e.Attr("value")
+			}
+		})
+		n.post(tmp, DailyUrl, data)
+		data["__EVENTTARGET"] = "dgDailyResults$ctl01$ctl01"
 		n.post(c, DailyUrl, data)
 	}
 
@@ -176,8 +189,6 @@ func (n Netcoupe) sessionHeaders(c *colly.Collector) map[string]string {
 		"__EVENTARGUMENT": "",
 		"__LASTFOCUS":     "",
 		"__EVENTTARGET":   "ddlDisplayDate",
-		//FIXME(rochaporto): handle single page listing to include all flights
-		//"__EVENTTARGET": "dgDailyResults$ctl01$ctl01",
 	}
 
 	t := c.Clone()
@@ -197,7 +208,7 @@ func (n Netcoupe) sessionHeaders(c *colly.Collector) map[string]string {
 			headers["__VIEWSTATEGENERATOR"] = e.Attr("value")
 		}
 	})
-	t.Visit(DailyUrl)
+	t.Request("GET", DailyUrl, nil, nil, httpHeaders)
 
 	return headers
 }
