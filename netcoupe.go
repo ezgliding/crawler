@@ -121,10 +121,12 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 			i = 1
 		}
 		f.Type = e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 15+i))
-		trackUrl, _ := url.Parse(
+		trackUrl, err := url.Parse(
 			e.ChildAttr(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div a", 16+i), "href"))
-		f.TrackID = trackUrl.Query()["FileID"][0]
-		f.TrackURL = fmt.Sprintf("%v%v", TrackBaseUrl, f.TrackID)
+		if err == nil && trackUrl.RawQuery != "" {
+			f.TrackID = trackUrl.Query()["FileID"][0]
+			f.TrackURL = fmt.Sprintf("%v%v", TrackBaseUrl, f.TrackID)
+		}
 		f.Speed = parseFloat(e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 17+i)))
 		f.Comments = e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 23+i))
 
