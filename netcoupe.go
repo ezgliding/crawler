@@ -16,14 +16,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// DailyUrl is the main page to list netcoupe flights.
-const DailyUrl = "http://www.netcoupe.net/Results/DailyResults.aspx"
+// DailyUrlPattern is the main page to list netcoupe flights.
+const DailyUrlPattern = "http://%v.netcoupe.net/Results/DailyResults.aspx"
 
 // FlightBaseUrl is the base path to fetch flight details from a flight ID.
-const FlightBaseUrl = "http://www.netcoupe.net/Results/FlightDetail.aspx?FlightID="
+const FlightBaseUrlPattern = "http://%v.netcoupe.net/Results/FlightDetail.aspx?FlightID="
 
-// TrackBaseUrl is the base path to download the flight track from a track ID.
-const TrackBaseUrl = "http://www.netcoupe.net/Download/DownloadIGC.aspx?FileID="
+// TrackBaseUrlPattern is the base path to download the flight track from a track ID.
+const TrackBaseUrlPattern = "http://%v.netcoupe.net/Download/DownloadIGC.aspx?FileID="
 
 // This is a constant map.
 var httpHeaders = map[string][]string{
@@ -41,14 +41,25 @@ var httpHeaders = map[string][]string{
 // Netcoupe implements a crawler for http://netcoupe.net.
 type Netcoupe struct {
 	collector *colly.Collector
+	year      int
+	baseUrl   string
 }
 
-func NewNetcoupe() Netcoupe {
+func NewNetcoupeYear(year int) Netcoupe {
 	n := Netcoupe{}
+	n.year = year
+	n.baseUrl = "www"
 	n.collector = colly.NewCollector()
 	n.collector.AllowURLRevisit = true
 	n.collector.UserAgent = httpHeaders["User-Agent"][0]
+	if year != 0 {
+		n.baseUrl = fmt.Sprintf("archive%v", year)
+	}
 	return n
+}
+
+func NewNetcoupe() Netcoupe {
+	return NewNetcoupeYear(0)
 }
 
 // Crawl checks for flights on netcoupe.net.
@@ -96,7 +107,7 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 		log.WithFields(log.Fields{
 			"flight_id": id[1]}).Trace("Scheduling flight details")
 		if len(id) == 2 {
-			d.Visit(fmt.Sprintf("%v%v", FlightBaseUrl, id[1]))
+			d.Visit(fmt.Sprintf("%v%v", n.flightBaseUrl(), id[1]))
 		}
 
 	})
@@ -125,7 +136,7 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 			e.ChildAttr(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div a", 16+i), "href"))
 		if err == nil && trackUrl.RawQuery != "" {
 			f.TrackID = trackUrl.Query()["FileID"][0]
-			f.TrackURL = fmt.Sprintf("%v%v", TrackBaseUrl, f.TrackID)
+			f.TrackURL = fmt.Sprintf("%v%v", n.trackBaseUrl(), f.TrackID)
 		}
 		f.Speed = parseFloat(e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 17+i)))
 		f.Comments = e.ChildText(fmt.Sprintf("tbody tr:nth-child(%v) td:nth-child(2) div", 23+i))
@@ -151,9 +162,9 @@ func (n Netcoupe) Crawl(start time.Time, end time.Time) ([]Flight, error) {
 				data["__VIEWSTATEGENERATOR"] = e.Attr("value")
 			}
 		})
-		n.post(tmp, DailyUrl, data)
+		n.post(tmp, n.dailyUrl(), data)
 		data["__EVENTTARGET"] = "dgDailyResults$ctl01$ctl01"
-		n.post(c, DailyUrl, data)
+		n.post(c, n.dailyUrl(), data)
 	}
 
 	log.WithFields(log.Fields{
@@ -210,7 +221,7 @@ func (n Netcoupe) sessionHeaders(c *colly.Collector) map[string]string {
 			headers["__VIEWSTATEGENERATOR"] = e.Attr("value")
 		}
 	})
-	t.Request("GET", DailyUrl, nil, nil, httpHeaders)
+	t.Request("GET", n.dailyUrl(), nil, nil, httpHeaders)
 
 	return headers
 }
@@ -235,6 +246,18 @@ func (n Netcoupe) get(c *colly.Collector, url string, data map[string]string) {
 		"url":  url,
 		"data": data}).Trace("Post request")
 	c.Request("GET", url, createFormReader(data), nil, httpHeaders)
+}
+
+func (n Netcoupe) dailyUrl() string {
+	return fmt.Sprintf(DailyUrlPattern, n.baseUrl)
+}
+
+func (n Netcoupe) flightBaseUrl() string {
+	return fmt.Sprintf(FlightBaseUrlPattern, n.baseUrl)
+}
+
+func (n Netcoupe) trackBaseUrl() string {
+	return fmt.Sprintf(TrackBaseUrlPattern, n.baseUrl)
 }
 
 func parseFloat(s string) float64 {
